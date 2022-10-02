@@ -1,7 +1,7 @@
-use fltk::prelude::{InputExt, WidgetExt, MenuExt};
-use fltk::{group, input, frame, menu};
-use rand::Rng;
 use crate::Message;
+use fltk::prelude::{InputExt, MenuExt, WidgetExt};
+use fltk::{frame, group, input, menu};
+use rand::Rng;
 mod window_changer;
 use window_changer::generating_new_template;
 mod group_mod;
@@ -22,9 +22,8 @@ pub fn emit(
     result_frame_2: &mut frame::Frame,
     group_generate: &mut group::Group,
     num_range: &mut input::Input,
-    result_frame_3: &mut frame::Frame
-    )
-    {
+    result_frame_3: &mut frame::Frame,
+) {
     match msg {
         Message::Choice => {
             group_mod_1.hide();
@@ -41,7 +40,8 @@ pub fn emit(
                     group_mod_2.show();
                     generating_new_template(m_2, task_2, result_frame_2);
                 }
-                2 => { //Генерація числа в діапазоні від A до B
+                2 => {
+                    //Генерація числа в діапазоні від A до B
                     group_generate.show();
                 }
                 _ => (),
@@ -54,77 +54,88 @@ pub fn emit(
 
             let mut splitter = line.split("^");
 
-            let mut base = splitter.next().unwrap()
-                .trim().parse::<i128>().unwrap_or(0);
-            
+            let mut base = splitter.next().unwrap().trim().parse::<i128>().unwrap_or(0);
+
             match splitter.next() {
                 Some(exponent) => {
-                    let mut exp = exponent.trim().parse::<i128>()
-                        .unwrap_or(1);
-                    if exp == 1{
-                        result_frame.set_label(&format!("x = {}", 
-                            base.remainder(m)));
-                    }
-                    else{
-                        result_frame.set_label(&format!("x = {}", 
-                            base.remainder_with_exp(&mut exp, m)));
+                    let mut exp = exponent.trim().parse::<i128>().unwrap_or(1);
+                    if exp == 1 {
+                        result_frame.set_label(&format!("x = {}", base.remainder(m)));
+                    } else {
+                        result_frame
+                            .set_label(&format!("x = {}", base.remainder_with_exp(&mut exp, m)));
                     }
                 }
                 None => {
-                    result_frame.set_label(&format!("x = {}", 
-                        base.remainder(m)));
+                    result_frame.set_label(&format!("x = {}", base.remainder(m)));
                 }
             }
         }
         Message::LinEq => {
             let m = m_2.value().trim().parse::<i128>().unwrap_or(1);
-            
+
             let line = task_2.value();
 
             let mut splitter = line.split_whitespace();
 
-            let mut a = splitter.next().unwrap_or("None")
-                .trim().parse::<i128>().unwrap_or(1);
-            
-            let b =  splitter.next().unwrap_or("None")
-            .trim().parse::<i128>().unwrap_or(1);
+            let mut a = splitter
+                .next()
+                .unwrap_or("None")
+                .trim()
+                .parse::<i128>()
+                .unwrap_or(1);
 
-            match eu_alg(a, m){
-                true =>{
+            let b = splitter
+                .next()
+                .unwrap_or("None")
+                .trim()
+                .parse::<i128>()
+                .unwrap_or(1);
+
+            match eu_alg(a, m) {
+                true => {
                     let mut counter = 0;
 
-                    for i in 2..m{
+                    for i in 2..m {
                         match eu_alg(i, m) {
                             true => {
                                 counter += 1;
-                            },
-                            false => ()
+                            }
+                            false => (),
                         }
                     }
-                    
+
                     let buf = a.remainder_with_exp(&mut counter, m);
-                    result_frame_2.set_label(&format!("x = {}",
-                        (b * buf) % m));
-                },
-                false =>{
-                    result_frame_2.set_label("Неможливо визначити")
+                    result_frame_2.set_label(&format!("x = {}", (b * buf) % m));
                 }
+                false => result_frame_2.set_label("Неможливо визначити"),
             }
-        },
-        Message::Generate =>{
+        }
+        Message::Generate => {
             let mut rng = rand::thread_rng();
 
             let line = num_range.value();
-            
-            let mut splitter = line.split_whitespace();
-            
-            let a = splitter.next().unwrap_or("None")
-                .trim().parse::<i128>().unwrap_or(i128::MIN);
-            
-            let b = splitter.next().unwrap_or("None")
-                .trim().parse::<i128>().unwrap_or(i128::MAX);
 
-            result_frame_3.set_label(&format!("Згенероване число:\n{}", rng.gen_range(a..=b)));
+            let mut splitter = line.split_whitespace();
+
+            let a = splitter
+                .next()
+                .unwrap_or("None")
+                .trim()
+                .parse::<i128>()
+                .unwrap_or(i128::MIN);
+
+            let b = splitter
+                .next()
+                .unwrap_or("None")
+                .trim()
+                .parse::<i128>()
+                .unwrap_or(i128::MAX);
+
+            result_frame_3.set_label(&format!(
+                "Згенероване число:\n{}",
+                rng.gen_range(i128::min(a, b)..=i128::max(a, b))
+            ));
         }
     }
 }
@@ -146,15 +157,19 @@ impl EuDiv for i128 {
             }
         }
     }
-    fn remainder_with_exp(&mut self, exp: &mut i128, mo: i128) -> i128{
+    fn remainder_with_exp(&mut self, exp: &mut i128, mo: i128) -> i128 {
         let mut r = 1;
-        while *exp!=0 {
-            if *exp%2 ==1{
-                r = (r* *self) % mo;
+        let im = (*exp%2 == 0) && (*self < 0);
+        while *exp != 0 {
+            if *exp % 2 == 1 {
+                r = (r * *self).remainder(mo) as i128;
             }
             *exp = *exp / 2;
             *self = *self * *self % mo;
         }
-        r
+        match im {
+            true => mo - r,
+            false => r
+        }        
     }
 }
